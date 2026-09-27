@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1B6B47">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Budget Buddy">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Budget Buddy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
@@ -286,6 +293,8 @@ function header(){
   <button class="iconbtn" data-act="settings" aria-label="Settings and backup">${I.gear}</button></div>`
 }
 function monthBar(){return `<div class="month"><button class="iconbtn" data-act="mprev" aria-label="Previous month">${I.left}</button><b>${monthLabel(ui.month)}</b><button class="iconbtn" data-act="mnext" aria-label="Next month">${I.right}</button></div>`}
+let installEvt=null;
+function installBanner(){if(!installEvt)return"";return `<div class="demo" style="background:var(--card);color:var(--ink)"><p><b>Install Budget Buddy</b> on your phone. It gets its own icon and works even without internet.</p><div class="row"><button data-act="install" style="background:var(--good);color:#fff">Install app</button></div></div>`}
 function demoBanner(){if(!S.demo)return"";return `<div class="demo"><p><b>These are example numbers</b> so you can see how Budget Buddy works. Start your own tracker when you're ready, or restore a backup file.</p><div class="row"><button data-act="start">Start my tracker</button><button class="ghost" data-act="restore">Restore backup</button></div></div>`}
 
 function loanAlerts(){
@@ -301,7 +310,7 @@ function vHome(){
   const max=Math.max(1,...series.map(s=>Math.max(s.i,s.e)));
   const pendCount=m.pending.length;
   const recent=[...S.income.map(x=>({d:x.date,t:x.client,s:x.status==="Paid"?"Income":"Pending income",a:x.php!=null?num(x.php):null,cur:x.currency,raw:x.amount,k:"i"})),...S.expenses.map(x=>({d:x.date,t:x.desc||x.category,s:x.category,a:num(x.amount),k:"e"}))].filter(x=>ym(x.d)===ui.month).sort((a,b)=>b.d.localeCompare(a.d)).slice(0,6);
-  return `${header()}${demoBanner()}${monthBar()}
+  return `${header()}${installBanner()}${demoBanner()}${monthBar()}
   <section class="hero" aria-label="This month"><span class="lbl">Money left this month</span><span class="big num">${peso(m.left)}</span>
   <div class="chips"><span class="chip">Received <b class="num">${peso(m.received)}</b></span><span class="chip">Spent <b class="num">${peso(m.spent)}</b></span>${m.loanPaid?`<span class="chip">Loans paid <b class="num">${peso(m.loanPaid)}</b></span>`:""}${m.saved?`<span class="chip">${m.saved>0?"Saved":"Took from savings"} <b class="num">${peso(Math.abs(m.saved))}</b></span>`:""}</div></section>
   ${loanAlerts()}
@@ -525,6 +534,7 @@ document.addEventListener("click",async e=>{
     case"del":{if(t.dataset.armed){const k=t.dataset.kind;S[coll[k]]=S[coll[k]].filter(i=>i.id!==id);persist();closeSheet();render();toast("Deleted")}else{t.dataset.armed="1";t.textContent="Tap again to delete"}break}
     case"gdel":S.grocery=S.grocery.filter(g=>g.id!==id);persist();render();break;
     case"gsave":{const got=S.grocery.filter(g=>g.done);const tot=got.reduce((s,g)=>s+num(g.price),0);S.expenses.push({id:uid(),date:today(),category:"Groceries",desc:"Groceries: "+got.map(g=>g.name).slice(0,4).join(", ")+(got.length>4?" +"+(got.length-4)+" more":""),amount:+tot.toFixed(2)});S.grocery=S.grocery.filter(g=>!g.done);persist();render();toast(peso(tot)+" saved to expenses");break}
+    case"install":if(installEvt){installEvt.prompt();try{await installEvt.userChoice}catch(_){}installEvt=null;render()}break;
     case"export":doExport();break;
     case"copyex":{const ta=$("#extext");try{await navigator.clipboard.writeText(ta.value);toast("Copied")}catch(_){ta.select()}break}
     case"pasteimp":doImport($("#st-paste").value);break;
@@ -556,6 +566,9 @@ document.addEventListener("submit",e=>{
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#layer").innerHTML)closeSheet()});
 
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;render()});
+window.addEventListener("appinstalled",()=>{installEvt=null;render();toast("Budget Buddy installed")});
+if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
 render();
 })();
 </script>
